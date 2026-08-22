@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>2026年度 Meeting議事録 入力（テスト版）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1c1914;
+      --paper: #f7f1e4;
+      --paper-2: #efe6d4;
+      --gold: #b8892d;
+      --gold-2: #d4af55;
+      --line: #c9b896;
+      --muted: #6b6254;
+      --ok: #2f5d3a;
+      --ok-bg: #e7f0e4;
+      --danger: #8a2e2e;
+      --shadow: 0 24px 60px rgba(20, 14, 6, 0.28);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      min-height: 100vh;
+      font-family: "Zen Kaku Gothic New", "Hiragino Sans", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #3a3224 0%, transparent 55%),
+        radial-gradient(900px 500px at 110% 10%, #2a2318 0%, transparent 50%),
+        #14110d;
+    }
+
+    .page {
+      width: min(980px, calc(100% - 32px));
+      margin: 28px auto 64px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border: 1px solid var(--gold-2);
+      color: var(--gold-2);
+      letter-spacing: 0.18em;
+      font-size: 11px;
+    }
+
+    .top-actions { display: flex; gap: 8px; }
+
+    .sheet {
+      background: linear-gradient(180deg, #fbf6ea 0%, var(--paper) 100%);
+      border: 1px solid #e4d7b8;
+      box-shadow: var(--shadow);
+      padding: 36px 40px 44px;
+    }
+
+    .head {
+      text-align: center;
+      border-top: 1px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+      padding: 18px 8px 16px;
+      margin-bottom: 22px;
+    }
+
+    .head h1 {
+      font-family: "Shippori Mincho", serif;
+      font-size: 32px;
+      letter-spacing: 0.12em;
+      margin: 0 0 8px;
+    }
+
+    .head .sub {
+      font-size: 14px;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+    }
+
+    .theme {
+      font-family: "Shippori Mincho", serif;
+      font-size: 38px;
+      letter-spacing: 0.4em;
+      margin: 14px 0 8px;
+    }
+
+    .theme-note {
+      font-size: 12px;
+      line-height: 1.8;
+      color: var(--muted);
+      text-align: left;
+      max-width: 46em;
+      margin: 0 auto 4px;
+    }
+
+    .label {
+      display: block;
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .req { color: var(--danger); margin-left: 4px; font-weight: 700; }
+
+    .progress {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .progress strong { color: var(--ink); font-size: 16px; }
+
+    .stores {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+
+    .store {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      color: var(--ink);
+      padding: 12px 6px 10px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: 0.15s ease;
+      min-height: 72px;
+    }
+
+    .store:hover { border-color: var(--gold); }
+    .store-name {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+    .store-state {
+      display: block;
+      margin-top: 6px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+    .store.is-on {
+      background: var(--ink);
+      color: #f7f1e4;
+      border-color: var(--ink);
+    }
+    .store.is-on .store-state { color: #d4c4a0; }
+    .store.is-done {
+      border-color: var(--ok);
+      background: var(--ok-bg);
+    }
+    .store.is-done .store-state { color: var(--ok); font-weight: 700; }
+    .store.is-on.is-done {
+      background: var(--ink);
+      border-color: var(--gold-2);
+    }
+    .store.is-on.is-done .store-state { color: var(--gold-2); }
+
+    .now {
+      display: none;
+      margin: 14px 0 0;
+      padding: 10px 14px;
+      background: var(--ink);
+      color: var(--paper);
+      letter-spacing: 0.08em;
+      font-size: 14px;
+    }
+    .now.is-on { display: block; }
+    .now b { color: var(--gold-2); font-size: 18px; margin-left: 8px; }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 18px;
+      margin: 22px 0 8px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .meta .full { grid-column: 1 / -1; }
+
+    input[type="text"],
+    input[type="datetime-local"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 15px;
+      padding: 11px 12px;
+      outline: none;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(184, 137, 45, 0.15);
+    }
+    textarea { min-height: 96px; resize: vertical; line-height: 1.7; }
+
+    .section { margin-top: 26px; }
+    .section h2 {
+      font-family: "Shippori Mincho", serif;
+      font-size: 20px;
+      letter-spacing: 0.08em;
+      margin: 0 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--ink);
+    }
+    .item { margin: 0 0 16px; padding-left: 8px; }
+    .item h3 { margin: 0 0 8px; font-size: 14px; letter-spacing: 0.08em; }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      margin-top: 28px;
+    }
+
+    button.primary, button.ghost, button.gold {
+      font-family: inherit;
+      font-size: 14px;
+      letter-spacing: 0.12em;
+      padding: 12px 18px;
+      cursor: pointer;
+      border: 1px solid var(--ink);
+    }
+    button.primary { background: var(--ink); color: var(--paper); }
+    button.ghost { background: transparent; }
+    button.gold { background: var(--gold); color: #fff; border-color: var(--gold); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .toast {
+      display: none;
+      margin-top: 12px;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+    }
+    .toast.is-on { display: block; }
+    .toast.ok { color: var(--ok); }
+    .toast.ng { color: var(--danger); }
+
+    .banner {
+      display: none;
+      margin: 18px 0 0;
+      padding: 14px 16px;
+      background: var(--ok-bg);
+      border: 1px solid var(--ok);
+      color: var(--ok);
+    }
+    .banner.is-on { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+    .hidden { display: none !important; }
+
+    #summaryView.sheet { padding: 20px 26px 24px; }
+
+    .minutes-doc {
+      font-family: "Yu Gothic", "Yu Gothic UI", "Meiryo", sans-serif;
+      font-size: 11pt;
+      font-weight: 400;
+      line-height: 1.42;
+      color: #111;
+    }
+    .minutes-doc h1 {
+      text-align: center;
+      font-size: 12pt;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      margin: 0 0 0.7em;
+    }
+    .minutes-doc .store-title {
+      font-size: 11pt;
+      font-weight: 700;
+      margin: 0.7em 0 0.1em;
+      letter-spacing: 0;
+    }
+    .minutes-doc h1 + .store-title { margin-top: 0.2em; }
+    .minutes-doc .sec-title + .store-title { margin-top: 0.15em; }
+    .minutes-doc .sec-title {
+      font-size: 11pt;
+      font-weight: 400;
+      margin: 0.9em 0 0.1em;
+      letter-spacing: 0;
+    }
+    .minutes-doc .sub-title {
+      font-size: 11pt;
+      font-weight: 400;
+      margin: 0.25em 0 0;
+    }
+    .minutes-doc .raw {
+      font-size: 11pt;
+      font-weight: 400;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 0;
+    }
+    .minutes-doc .empty-note {
+      color: var(--muted);
+      text-align: center;
+      margin-top: 16px;
+    }
+
+    .legend { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; }
+    .dot { display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 10px; vertical-align: middle; border: 1px solid var(--line); }
+    .dot.wait { background: #fffdf8; }
+    .dot.done { background: var(--ok-bg); border-color: var(--ok); }
+    .dot.now { background: var(--ink); }
+
+    @media (max-width: 800px) {
+      .sheet { padding: 24px 16px 32px; }
+      .stores { grid-template-columns: repeat(4, 1fr); }
+      .meta { grid-template-columns: 1fr; }
+      .head h1 { font-size: 24px; }
+      .theme { font-size: 28px; letter-spacing: 0.24em; }
+    }
+
+    @media print {
+      @page { size: A4; margin: 10mm 12mm; }
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .page { width: auto; margin: 0; }
+      .sheet, #summaryView.sheet {
+        box-shadow: none;
+        border: none;
+        background: #fff;
+        padding: 0;
+      }
+      .minutes-doc { font-size: 11pt; line-height: 1.38; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar no-print">
+      <div class="badge">TEST / テスト版表示</div>
+      <div class="top-actions">
+        <button type="button" class="ghost" id="toFormBtn">入力画面</button>
+        <button type="button" class="gold" id="toSummaryBtn">全店まとめを見る</button>
+      </div>
+    </div>
+
+    <form class="sheet" id="formView">
+      <header class="head">
+        <h1>2026年度 Meeting議事録</h1>
+        <div class="sub">【2026年度活動指針】</div>
+        <div class="theme">凌駕</div>
+        <p class="theme-note">凌駕（りょうが）は、他を差し置いてその上に出ることという意味の二字熟語です。集団の中で上のほうに行くためには、それ相応の努力が必要です。</p>
+      </header>
+
+      <div class="progress">
+        <div>入力状況 <strong id="progressText">0 / 7 店</strong></div>
+        <div class="legend">
+          <span class="dot wait"></span>未入力
+          <span class="dot done"></span>入力済
+          <span class="dot now"></span>入力中
+        </div>
+      </div>
+
+      <div>
+        <span class="label">入力する店舗<span class="req">*</span></span>
+        <div class="stores" id="storeButtons"></div>
+      </div>
+      <div class="now" id="nowBanner">現在入力中の店舗：<b id="nowStore">未選択</b></div>
+
+      <div class="meta">
+        <label>
+          <span class="label">日時</span>
+          <input type="datetime-local" name="datetime" />
+        </label>
+        <label>
+          <span class="label">場所</span>
+          <input type="text" name="place" id="place" placeholder="店舗選択で自動入力" />
+        </label>
+        <label class="full">
+          <span class="label">参加者</span>
+          <input type="text" name="attendees" placeholder="例：店長、エリアマネージャー、…" />
+        </label>
+      </div>
+
+      <section class="section">
+        <h2>1、キャスト入店・退店・在籍状況</h2>
+        <div class="item">
+          <h3>① 新人入店報告</h3>
+          <textarea name="newCast" placeholder="氏名・入店日など"></textarea>
+        </div>
+        <div class="item">
+          <h3>② 退店報告</h3>
+          <textarea name="leaveCast" placeholder="氏名・退店日・理由など"></textarea>
+        </div>
+        <div class="item">
+          <h3>③ 現在の在籍人数</h3>
+          <textarea name="castCount" placeholder="例：在籍 51名(+2) 固定 33名(±0) 未固定 16名(+2)"></textarea>
+        </div>
+        <div class="item">
+          <h3>④ 固定シフト</h3>
+          <textarea name="fixedShift" placeholder="固定シフトの内容"></textarea>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>２、店長業務報告</h2>
+        <textarea name="managerReport" placeholder="店長業務の報告内容"></textarea>
+      </section>
+
+      <section class="section">
+        <h2>３、協議事項</h2>
+        <div class="item">
+          <h3>① 今後の活動予定</h3>
+          <textarea name="upcoming" placeholder="今後の予定"></textarea>
+        </div>
+        <div class="item">
+          <h3>② 店舗からの提案・議案</h3>
+          <textarea name="proposals" placeholder="提案・議案"></textarea>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>その他</h2>
+        <textarea name="other" placeholder="その他連絡事項"></textarea>
+      </section>
+
+      <div class="actions no-print">
+        <button type="button" class="ghost" id="resetBtn">この店舗をクリア</button>
+        <button type="submit" class="primary">この店舗を保存</button>
+      </div>
+      <div class="toast no-print" id="toast"></div>
+      <div class="banner no-print" id="allDoneBanner">
+        <span>全7店の入力が完了しました。右上の「全店まとめを見る」から一覧できます。</span>
+        <button type="button" class="gold" id="bannerSummaryBtn">全店まとめを見る</button>
+      </div>
+    </form>
+
+    <section class="sheet hidden" id="summaryView">
+      <article class="minutes-doc" id="summaryDoc"></article>
+      <div class="actions no-print">
+        <button type="button" class="ghost" id="printBtn">印刷 / PDF</button>
+        <button type="button" class="primary" id="backBtn">入力画面に戻る</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const STORES = ["堺東", "和歌山", "梅田", "谷九", "日本橋", "十三", "京橋"];
+    const KEY = "minutes-v2-stores";
+    const FIELDS = ["datetime", "place", "attendees", "newCast", "leaveCast", "castCount", "fixedShift", "managerReport", "upcoming", "proposals", "other"];
+
+    const form = document.getElementById("formView");
+    const summaryView = document.getElementById("summaryView");
+    const storeButtons = document.getElementById("storeButtons");
+    const placeInput = document.getElementById("place");
+    const toast = document.getElementById("toast");
+    const nowBanner = document.getElementById("nowBanner");
+    const nowStore = document.getElementById("nowStore");
+    const progressText = document.getElementById("progressText");
+    const allDoneBanner = document.getElementById("allDoneBanner");
+    const summaryDoc = document.getElementById("summaryDoc");
+
+    let currentStore = "";
+    let records = loadRecords();
+
+    function loadRecords() {
+      try { return JSON.parse(localStorage.getItem(KEY) || "{}"); }
+      catch { return {}; }
+    }
+    function saveRecords() {
+      localStorage.setItem(KEY, JSON.stringify(records));
+    }
+
+    function blankData() {
+      return Object.fromEntries(FIELDS.map((k) => [k, ""]));
+    }
+
+    function readForm() {
+      const data = blankData();
+      FIELDS.forEach((name) => {
+        const el = form.elements[name];
+        data[name] = el ? String(el.value || "") : "";
+      });
+      return data;
+    }
+
+    function writeForm(data) {
+      const src = data || blankData();
+      FIELDS.forEach((name) => {
+        const el = form.elements[name];
+        if (el) el.value = src[name] || "";
+      });
+      placeInput.dataset.touched = src.place && src.place !== currentStore ? "1" : "";
+    }
+
+    function savedCount() {
+      return STORES.filter((s) => records[s]).length;
+    }
+
+    function hasText(text) {
+      return String(text ?? "").trim().length > 0;
+    }
+
+    function raw(text) {
+      return String(text ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    function block(title, text) {
+      if (!hasText(text)) return "";
+      return `<div class="sub-title">${title}</div><div class="raw">${raw(text)}</div>`;
+    }
+
+    function storeHeading(name) {
+      return `<div class="store-title">『${name}』</div>`;
+    }
+
+    function summaryMonth() {
+      const dates = STORES
+        .map((s) => records[s]?.datetime)
+        .filter(Boolean)
+        .map((v) => new Date(v))
+        .filter((d) => !Number.isNaN(d.getTime()));
+      const d = dates.sort((a, b) => b - a)[0] || new Date();
+      return d.getMonth() + 1;
+    }
+
+    function paintButtons() {
+      [...storeButtons.children].forEach((btn) => {
+        const name = btn.dataset.store;
+        btn.classList.toggle("is-on", name === currentStore);
+        btn.classList.toggle("is-done", Boolean(records[name]));
+        btn.querySelector(".store-state").textContent =
+          name === currentStore ? "入力中" : records[name] ? "入力済" : "未入力";
+      });
+      progressText.textContent = `${savedCount()} / 7 店`;
+      nowBanner.classList.toggle("is-on", Boolean(currentStore));
+      nowStore.textContent = currentStore || "未選択";
+      allDoneBanner.classList.toggle("is-on", savedCount() === STORES.length);
+    }
+
+    function setStore(name) {
+      currentStore = name;
+      const saved = records[name];
+      writeForm(saved || { ...blankData(), place: name });
+      if (!saved) placeInput.dataset.touched = "";
+      paintButtons();
+      showToast("", "");
+    }
+
+    STORES.forEach((name) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "store";
+      btn.dataset.store = name;
+      btn.innerHTML = `<span class="store-name">${name}</span><span class="store-state">未入力</span>`;
+      btn.addEventListener("click", () => setStore(name));
+      storeButtons.appendChild(btn);
+    });
+    paintButtons();
+
+    placeInput.addEventListener("input", () => {
+      placeInput.dataset.touched = placeInput.value ? "1" : "";
+    });
+
+    function showToast(text, kind) {
+      toast.textContent = text;
+      toast.className = "toast" + (text ? ` is-on ${kind}` : "");
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!currentStore) {
+        showToast("先に店舗を選んでください。", "ng");
+        return;
+      }
+      records[currentStore] = { ...readForm(), store: currentStore, savedAt: new Date().toISOString() };
+      saveRecords();
+      paintButtons();
+      showToast(`${currentStore} を保存しました。入力済の店は緑の「済」になります。`, "ok");
+      if (savedCount() === STORES.length) {
+        allDoneBanner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      if (!currentStore) {
+        writeForm(blankData());
+        return;
+      }
+      delete records[currentStore];
+      saveRecords();
+      writeForm({ ...blankData(), place: currentStore });
+      placeInput.dataset.touched = "";
+      paintButtons();
+      showToast(`${currentStore} の入力をクリアしました。`, "ok");
+    });
+
+    function renderSummary() {
+      const month = summaryMonth();
+      let html = `<h1>${month}月度店長会議議事録まとめ</h1>`;
+      const saved = STORES.filter((name) => records[name]);
+
+      if (!saved.length) {
+        summaryDoc.innerHTML = html + `<p class="empty-note">まだ保存された店舗がありません。</p>`;
+        return;
+      }
+
+      saved.forEach((name) => {
+        const rec = records[name];
+        const body = [
+          block("新人入店報告", rec.newCast),
+          block("退店報告", rec.leaveCast),
+          block("現在の在籍人数", rec.castCount),
+          block("固定シフト", rec.fixedShift),
+        ].join("");
+        if (body) html += storeHeading(name) + body;
+      });
+
+      const managers = saved.filter((name) => hasText(records[name].managerReport));
+      if (managers.length) {
+        html += `<div class="sec-title">店長業務報告</div>`;
+        managers.forEach((name) => {
+          html += storeHeading(name) + `<div class="raw">${raw(records[name].managerReport)}</div>`;
+        });
+      }
+
+      const talks = saved.filter((name) => hasText(records[name].upcoming) || hasText(records[name].proposals));
+      if (talks.length) {
+        html += `<div class="sec-title">協議事項</div>`;
+        talks.forEach((name) => {
+          const rec = records[name];
+          html += storeHeading(name)
+            + block("今後の活動予定", rec.upcoming)
+            + block("店舗からの提案・議案", rec.proposals);
+        });
+      }
+
+      const others = saved.filter((name) => hasText(records[name].other));
+      if (others.length) {
+        html += `<div class="sec-title">4. その他</div>`;
+        others.forEach((name) => {
+          html += storeHeading(name) + block("その他", records[name].other);
+        });
+      }
+
+      summaryDoc.innerHTML = html;
+    }
+
+    function showSummary() {
+      renderSummary();
+      form.classList.add("hidden");
+      summaryView.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function showForm() {
+      summaryView.classList.add("hidden");
+      form.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    document.getElementById("toSummaryBtn").addEventListener("click", showSummary);
+    document.getElementById("bannerSummaryBtn").addEventListener("click", showSummary);
+    document.getElementById("toFormBtn").addEventListener("click", showForm);
+    document.getElementById("backBtn").addEventListener("click", showForm);
+    document.getElementById("printBtn").addEventListener("click", () => window.print());
+  </script>
+</body>
+</html>
