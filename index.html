@@ -39,6 +39,54 @@
       margin: 28px auto 64px;
     }
 
+    .login-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #3a3224 0%, transparent 55%),
+        radial-gradient(900px 500px at 110% 10%, #2a2318 0%, transparent 50%),
+        #14110d;
+    }
+    .login-gate.hidden { display: none; }
+    .login-box {
+      width: min(420px, 100%);
+      background: linear-gradient(180deg, #fbf6ea 0%, var(--paper) 100%);
+      border: 1px solid #e4d7b8;
+      box-shadow: var(--shadow);
+      padding: 32px 28px 28px;
+    }
+    .login-box h1 {
+      font-family: "Shippori Mincho", serif;
+      font-size: 22px;
+      letter-spacing: 0.12em;
+      text-align: center;
+      margin: 0 0 6px;
+    }
+    .login-box .sub {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      margin-bottom: 22px;
+    }
+    .login-box label { display: block; }
+    .login-box label + label { margin-top: 14px; }
+    .login-box .actions button { width: 100%; }
+    .login-error {
+      display: none;
+      margin-top: 12px;
+      color: var(--danger);
+      font-size: 13px;
+      text-align: center;
+    }
+    .login-error.is-on { display: block; }
+    body.is-locked .page { visibility: hidden; }
+
     .topbar {
       display: flex;
       justify-content: space-between;
@@ -336,7 +384,7 @@
     @media print {
       @page { size: A4; margin: 10mm 12mm; }
       body { background: #fff; }
-      .no-print { display: none !important; }
+      .no-print, .login-gate { display: none !important; }
       .page { width: auto; margin: 0; }
       .sheet, #summaryView.sheet {
         box-shadow: none;
@@ -348,7 +396,25 @@
     }
   </style>
 </head>
-<body>
+<body class="is-locked">
+  <div class="login-gate" id="loginGate">
+    <form class="login-box" id="loginForm">
+      <h1>Meeting議事録</h1>
+      <div class="sub">ログイン</div>
+      <label>
+        <span class="label">ID</span>
+        <input type="text" name="loginId" autocomplete="username" required />
+      </label>
+      <label>
+        <span class="label">パスワード</span>
+        <input type="password" name="loginPassword" autocomplete="current-password" required />
+      </label>
+      <div class="actions">
+        <button type="submit" class="primary">ログイン</button>
+      </div>
+      <div class="login-error" id="loginError">IDまたはパスワードが違います。</div>
+    </form>
+  </div>
   <div class="page">
     <div class="topbar no-print">
       <div class="badge">TEST / テスト版表示</div>
@@ -459,6 +525,38 @@
   </div>
 
   <script>
+    const AUTH_KEY = "minutes-v2-auth";
+    const AUTH_ID = "138c3adda5424d1633a19103430ea818f4915a177dc35789e196f96b22e8fee6";
+    const AUTH_PW = "2a2f2bc76f077bf83cebf4332609716074b89c193ff3e84d9cf440d5740a842f";
+
+    async function sha256hex(text) {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function unlockApp() {
+      document.body.classList.remove("is-locked");
+      document.getElementById("loginGate").classList.add("hidden");
+    }
+
+    if (sessionStorage.getItem(AUTH_KEY) === "ok") unlockApp();
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = new FormData(e.currentTarget);
+      const id = String(data.get("loginId") || "");
+      const pw = String(data.get("loginPassword") || "");
+      const [idHash, pwHash] = await Promise.all([sha256hex(id), sha256hex(pw)]);
+      const error = document.getElementById("loginError");
+      if (idHash === AUTH_ID && pwHash === AUTH_PW) {
+        sessionStorage.setItem(AUTH_KEY, "ok");
+        error.classList.remove("is-on");
+        unlockApp();
+        return;
+      }
+      error.classList.add("is-on");
+    });
+
     const STORES = ["堺東", "和歌山", "梅田", "谷九", "日本橋", "十三", "京橋"];
     const KEY = "minutes-v2-stores";
     const FIELDS = ["datetime", "place", "attendees", "newCast", "leaveCast", "castCount", "fixedShift", "managerReport", "upcoming", "proposals", "other"];
