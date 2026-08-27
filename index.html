@@ -417,7 +417,7 @@
   </div>
   <div class="page">
     <div class="topbar no-print">
-      <div class="badge">TEST / テスト版表示</div>
+      <div class="badge">共有保存 / PCオフ対応</div>
       <div class="top-actions">
         <button type="button" class="ghost" id="toFormBtn">入力画面</button>
         <button type="button" class="gold" id="toSummaryBtn">全店まとめを見る</button>
@@ -525,41 +525,14 @@
   </div>
 
   <script>
-    const AUTH_KEY = "minutes-v2-auth";
+    const STORES = ["堺東", "和歌山", "梅田", "谷九", "日本橋", "十三", "京橋"];
+    const FIELDS = ["datetime", "place", "attendees", "newCast", "leaveCast", "castCount", "fixedShift", "managerReport", "upcoming", "proposals", "other"];
     const AUTH_ID = "138c3adda5424d1633a19103430ea818f4915a177dc35789e196f96b22e8fee6";
     const AUTH_PW = "2a2f2bc76f077bf83cebf4332609716074b89c193ff3e84d9cf440d5740a842f";
-
-    async function sha256hex(text) {
-      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-    }
-
-    function unlockApp() {
-      document.body.classList.remove("is-locked");
-      document.getElementById("loginGate").classList.add("hidden");
-    }
-
-    if (sessionStorage.getItem(AUTH_KEY) === "ok") unlockApp();
-
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const data = new FormData(e.currentTarget);
-      const id = String(data.get("loginId") || "");
-      const pw = String(data.get("loginPassword") || "");
-      const [idHash, pwHash] = await Promise.all([sha256hex(id), sha256hex(pw)]);
-      const error = document.getElementById("loginError");
-      if (idHash === AUTH_ID && pwHash === AUTH_PW) {
-        sessionStorage.setItem(AUTH_KEY, "ok");
-        error.classList.remove("is-on");
-        unlockApp();
-        return;
-      }
-      error.classList.add("is-on");
-    });
-
-    const STORES = ["堺東", "和歌山", "梅田", "谷九", "日本橋", "十三", "京橋"];
-    const KEY = "minutes-v2-stores";
-    const FIELDS = ["datetime", "place", "attendees", "newCast", "leaveCast", "castCount", "fixedShift", "managerReport", "upcoming", "proposals", "other"];
+    const GH_OWNER = "nightchuraumilover-ai";
+    const GH_REPO = "GP_Auto_System_V2";
+    const GH_PATH = "minutes-data.json";
+    const GH_TOKEN = "";
 
     const form = document.getElementById("formView");
     const summaryView = document.getElementById("summaryView");
@@ -573,14 +546,107 @@
     const summaryDoc = document.getElementById("summaryDoc");
 
     let currentStore = "";
-    let records = loadRecords();
+    let records = {};
 
-    function loadRecords() {
-      try { return JSON.parse(localStorage.getItem(KEY) || "{}"); }
-      catch { return {}; }
+    function unlockApp() {
+      document.body.classList.remove("is-locked");
+      document.getElementById("loginGate").classList.add("hidden");
     }
-    function saveRecords() {
-      localStorage.setItem(KEY, JSON.stringify(records));
+
+    async function sha256hex(text) {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function b64encode(text) {
+      return btoa(unescape(encodeURIComponent(text)));
+    }
+
+    function b64decode(text) {
+      return decodeURIComponent(escape(atob(String(text || "").replace(/\s/g, ""))));
+    }
+
+    async function ghHeaders(extra = {}) {
+      const headers = {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        ...extra,
+      };
+      if (GH_TOKEN) headers.Authorization = "Bearer " + GH_TOKEN;
+      return headers;
+    }
+
+    async function fetchRecordsFile() {
+      const res = await fetch(
+        `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}?t=${Date.now()}`,
+        { headers: await ghHeaders(), cache: "no-store" }
+      );
+      if (!res.ok) throw new Error("load");
+      const data = await res.json();
+      const parsed = JSON.parse(b64decode(data.content || ""));
+      return { sha: data.sha, stores: parsed.stores || {} };
+    }
+
+    async function refreshRecords() {
+      const file = await fetchRecordsFile();
+      records = file.stores;
+      paintButtons();
+      if (currentStore && records[currentStore]) writeForm(records[currentStore]);
+    }
+
+    async function writeRecords(mutator) {
+      if (!GH_TOKEN) throw new Error("token");
+      for (let i = 0; i < 3; i++) {
+        const file = await fetchRecordsFile();
+        const stores = { ...file.stores };
+        mutator(stores);
+        const body = JSON.stringify({ stores }, null, 2);
+        const res = await fetch(
+          `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`,
+          {
+            method: "PUT",
+            headers: await ghHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({
+              message: "Update shared minutes",
+              content: b64encode(body),
+              sha: file.sha,
+            }),
+          }
+        );
+        if (res.status === 409) continue;
+        if (!res.ok) throw new Error("save");
+        records = stores;
+        return;
+      }
+      throw new Error("save");
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = new FormData(e.currentTarget);
+      const error = document.getElementById("loginError");
+      const id = String(data.get("loginId") || "");
+      const pw = String(data.get("loginPassword") || "");
+      const [idHash, pwHash] = await Promise.all([sha256hex(id), sha256hex(pw)]);
+      if (idHash !== AUTH_ID || pwHash !== AUTH_PW) {
+        error.classList.add("is-on");
+        return;
+      }
+      error.classList.remove("is-on");
+      try {
+        await refreshRecords();
+        sessionStorage.setItem("minutes-v2-auth", "ok");
+        unlockApp();
+      } catch {
+        error.textContent = "データの読み込みに失敗しました。";
+        error.classList.add("is-on");
+      }
+    });
+
+    if (sessionStorage.getItem("minutes-v2-auth") === "ok") {
+      refreshRecords().then(unlockApp).catch(() => {
+        sessionStorage.removeItem("minutes-v2-auth");
+      });
     }
 
     function blankData() {
@@ -653,8 +719,9 @@
       allDoneBanner.classList.toggle("is-on", savedCount() === STORES.length);
     }
 
-    function setStore(name) {
+    async function setStore(name) {
       currentStore = name;
+      try { await refreshRecords(); } catch { /* keep current */ }
       const saved = records[name];
       writeForm(saved || { ...blankData(), place: name });
       if (!saved) placeInput.dataset.touched = "";
@@ -682,32 +749,39 @@
       toast.className = "toast" + (text ? ` is-on ${kind}` : "");
     }
 
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!currentStore) {
         showToast("先に店舗を選んでください。", "ng");
         return;
       }
-      records[currentStore] = { ...readForm(), store: currentStore, savedAt: new Date().toISOString() };
-      saveRecords();
-      paintButtons();
-      showToast(`${currentStore} を保存しました。入力済の店は緑の「済」になります。`, "ok");
-      if (savedCount() === STORES.length) {
-        allDoneBanner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const rec = { ...readForm(), store: currentStore, savedAt: new Date().toISOString() };
+      try {
+        await writeRecords((stores) => { stores[currentStore] = rec; });
+        paintButtons();
+        showToast(`${currentStore} を全端末共通で保存しました。`, "ok");
+        if (savedCount() === STORES.length) {
+          allDoneBanner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      } catch {
+        showToast("保存に失敗しました。少し待ってからもう一度保存してください。", "ng");
       }
     });
 
-    document.getElementById("resetBtn").addEventListener("click", () => {
+    document.getElementById("resetBtn").addEventListener("click", async () => {
       if (!currentStore) {
         writeForm(blankData());
         return;
       }
-      delete records[currentStore];
-      saveRecords();
-      writeForm({ ...blankData(), place: currentStore });
-      placeInput.dataset.touched = "";
-      paintButtons();
-      showToast(`${currentStore} の入力をクリアしました。`, "ok");
+      try {
+        await writeRecords((stores) => { delete stores[currentStore]; });
+        writeForm({ ...blankData(), place: currentStore });
+        placeInput.dataset.touched = "";
+        paintButtons();
+        showToast(`${currentStore} の入力をクリアしました。`, "ok");
+      } catch {
+        showToast("クリアに失敗しました。", "ng");
+      }
     });
 
     function renderSummary() {
@@ -761,7 +835,8 @@
       summaryDoc.innerHTML = html;
     }
 
-    function showSummary() {
+    async function showSummary() {
+      try { await refreshRecords(); } catch { /* keep current */ }
       renderSummary();
       form.classList.add("hidden");
       summaryView.classList.remove("hidden");
