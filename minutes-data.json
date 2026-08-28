@@ -1,1 +1,19 @@
-{"stores":{}}
+{
+  "stores": {
+    "堺東": {
+      "datetime": "",
+      "place": "堺東",
+      "attendees": "",
+      "newCast": "",
+      "leaveCast": "",
+      "castCount": "",
+      "fixedShift": "",
+      "managerReport": "",
+      "upcoming": "",
+      "proposals": "",
+      "other": "",
+      "store": "堺東",
+      "savedAt": "2026-08-28T01:47:54.242Z"
+    }
+  }
+}
