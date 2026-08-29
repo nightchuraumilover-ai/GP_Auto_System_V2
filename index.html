@@ -429,6 +429,10 @@
       .theme { font-size: 28px; letter-spacing: 0.24em; }
     }
 
+    .print-mask-top,
+    .print-mask-bottom {
+      display: none;
+    }
     .print-pages { display: none; }
     .print-pages.pdf-capture {
       display: block !important;
@@ -503,10 +507,22 @@
         break-after: auto;
         page-break-after: auto;
       }
-      .minutes-doc {
-        font-size: 11pt;
-        line-height: 1.42;
-        overflow: visible !important;
+      .print-mask-top,
+      .print-mask-bottom {
+        display: block;
+        position: fixed;
+        left: 0;
+        right: 0;
+        background: #fff;
+        z-index: 2147483647;
+      }
+      .print-mask-top {
+        top: 0;
+        height: 14mm;
+      }
+      .print-mask-bottom {
+        bottom: 0;
+        height: 16mm;
       }
       .minutes-doc .month-select,
       .minutes-doc.pdf-export .month-select {
@@ -534,6 +550,8 @@
   </style>
 </head>
 <body class="is-locked">
+  <div class="print-mask-top" aria-hidden="true"></div>
+  <div class="print-mask-bottom" aria-hidden="true"></div>
   <div class="login-gate" id="loginGate">
     <form class="login-box" id="loginForm">
       <h1>Meeting議事録</h1>
