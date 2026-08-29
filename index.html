@@ -639,7 +639,6 @@
     const GH_REPO = "GP_Auto_System_V2";
     const GH_PATH = "minutes-data.json";
     const GH_TOKEN = ["g","hp","_","bJa3X9tn5nKQ3yZmgYiBFR6HxuyvOa40KDWc"].join("");
-    const PAGE_TITLE = document.title;
     const monthSelectTop = document.getElementById("monthSelectTop");
 
     const form = document.getElementById("formView");
@@ -905,20 +904,21 @@
     }
 
     function setPdfBusy(busy) {
-      ["pdfBtn", "pdfBtnTop"].forEach((id) => {
+      ["pdfBtn", "pdfBtnTop", "printBtn"].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
         el.disabled = busy;
-        el.textContent = busy ? "PDF作成中…" : "PDFで保存";
+        if (id === "printBtn") el.textContent = busy ? "印刷準備中…" : "印刷";
+        else el.textContent = busy ? "PDF作成中…" : "PDFで保存";
       });
     }
 
-    async function downloadSummaryPdf() {
+    async function withSummaryPdf(run) {
       try { await refreshRecords(); } catch { /* keep current */ }
       renderSummary();
       if (!STORES.some((name) => records[name])) {
         showToast("先に店舗を保存してください。", "ng");
-        return;
+        return false;
       }
       const month = summaryMonth();
       const filename = `${month}月度店長会議議事録まとめ.pdf`;
@@ -933,25 +933,21 @@
         monthSelect.replaceWith(num);
       }
       setPdfBusy(true);
-      showToast("PDFを作成しています…", "ok");
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       try {
         if (typeof html2pdf === "undefined") throw new Error("pdf-lib");
-        await html2pdf()
+        const worker = html2pdf()
           .set({
-            margin: [6, 12, 12, 12],
+            margin: [8, 12, 12, 12],
             filename,
             image: { type: "jpeg", quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
             jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
             pagebreak: { mode: ["css", "legacy"] },
           })
-          .from(summaryDoc)
-          .save();
-        showToast("PDFを保存しました。", "ok");
-      } catch {
-        showToast("自動保存できないため、印刷画面から「PDFに保存」を選んでください。", "ng");
-        window.print();
+          .from(summaryDoc);
+        await run(worker, filename);
+        return true;
       } finally {
         if (summaryWasHidden) {
           summaryView.classList.add("hidden");
@@ -960,6 +956,55 @@
         summaryDoc.classList.remove("pdf-export");
         renderSummary();
         setPdfBusy(false);
+      }
+    }
+
+    async function downloadSummaryPdf() {
+      showToast("PDFを作成しています…", "ok");
+      try {
+        const ok = await withSummaryPdf((worker) => worker.save());
+        if (ok) showToast("PDFを保存しました。", "ok");
+      } catch {
+        showToast("PDFの作成に失敗しました。", "ng");
+      }
+    }
+
+    function printPdfBlob(blob) {
+      const url = URL.createObjectURL(blob);
+      const frame = document.createElement("iframe");
+      frame.style.cssText = "position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;";
+      document.body.appendChild(frame);
+      let printed = false;
+      const tryPrint = () => {
+        if (printed) return;
+        printed = true;
+        try {
+          frame.contentWindow.focus();
+          frame.contentWindow.print();
+        } catch {
+          window.open(url, "_blank");
+        }
+        setTimeout(() => {
+          frame.remove();
+          URL.revokeObjectURL(url);
+        }, 120000);
+      };
+      frame.onload = tryPrint;
+      frame.src = url;
+      setTimeout(tryPrint, 1200);
+    }
+
+    async function printSummary() {
+      showToast("印刷用PDFを作成しています…", "ok");
+      try {
+        const ok = await withSummaryPdf(async (worker) => {
+          const pdf = await worker.toPdf().get("pdf");
+          pdf.autoPrint();
+          printPdfBlob(pdf.output("blob"));
+        });
+        if (ok) showToast("印刷画面を開きました。", "ok");
+      } catch {
+        showToast("印刷の準備に失敗しました。PDFで保存してから印刷してください。", "ng");
       }
     }
 
@@ -1067,26 +1112,12 @@
     document.getElementById("bannerSummaryBtn").addEventListener("click", showSummary);
     document.getElementById("toFormBtn").addEventListener("click", showForm);
     document.getElementById("backBtn").addEventListener("click", showForm);
-    document.getElementById("printBtn").addEventListener("click", () => {
-      document.title = "\u00A0";
-      renderSummary();
-      window.print();
-    });
-    window.addEventListener("beforeprint", () => {
-      document.title = "\u00A0";
-      form.classList.add("hidden");
-      summaryView.classList.remove("hidden");
-      renderSummary();
-      const sel = document.getElementById("monthSelect");
-      if (sel) {
-        const num = document.createElement("span");
-        num.textContent = String(summaryMonth());
-        sel.replaceWith(num);
+    document.getElementById("printBtn").addEventListener("click", printSummary);
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "p" || e.key === "P")) {
+        e.preventDefault();
+        printSummary();
       }
-    });
-    window.addEventListener("afterprint", () => {
-      document.title = PAGE_TITLE;
-      renderSummary();
     });
     for (let n = 1; n <= 12; n++) {
       const opt = document.createElement("option");
