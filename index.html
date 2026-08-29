@@ -422,14 +422,34 @@
     }
 
     @media print {
-      @page { size: A4; margin: 12mm 12mm; }
-      body { background: #fff; }
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      @page {
+        @top-left { content: none; }
+        @top-center { content: none; }
+        @top-right { content: none; }
+        @bottom-left { content: none; }
+        @bottom-center { content: none; }
+        @bottom-right { content: none; }
+      }
+      html, body {
+        background: #fff !important;
+        margin: 0;
+        padding: 0;
+      }
       .no-print,
       .login-gate,
-      #formView {
+      #formView,
+      #formView.hidden {
         display: none !important;
       }
-      .page { width: auto; margin: 0; }
+      .page {
+        width: auto;
+        margin: 0;
+        padding: 10mm 12mm;
+      }
       .sheet,
       #summaryView,
       #summaryView.hidden,
@@ -610,6 +630,7 @@
     const GH_REPO = "GP_Auto_System_V2";
     const GH_PATH = "minutes-data.json";
     const GH_TOKEN = ["g","hp","_","bJa3X9tn5nKQ3yZmgYiBFR6HxuyvOa40KDWc"].join("");
+    const PAGE_TITLE = document.title;
     const monthSelectTop = document.getElementById("monthSelectTop");
 
     const form = document.getElementById("formView");
@@ -874,26 +895,21 @@
       }
     }
 
-    function setPdfBusy(busy, label) {
+    function setPdfBusy(busy) {
       ["pdfBtn", "pdfBtnTop"].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
         el.disabled = busy;
-        el.textContent = busy ? (label || "PDF作成中…") : "PDFで保存";
+        el.textContent = busy ? "PDF作成中…" : "PDFで保存";
       });
-      const printBtn = document.getElementById("printBtn");
-      if (printBtn) {
-        printBtn.disabled = busy;
-        printBtn.textContent = busy ? (label || "準備中…") : "印刷";
-      }
     }
 
-    async function prepareSummaryForPdf() {
+    async function downloadSummaryPdf() {
       try { await refreshRecords(); } catch { /* keep current */ }
       renderSummary();
       if (!STORES.some((name) => records[name])) {
         showToast("先に店舗を保存してください。", "ng");
-        return null;
+        return;
       }
       const month = summaryMonth();
       const filename = `${month}月度店長会議議事録まとめ.pdf`;
@@ -907,89 +923,33 @@
         num.textContent = String(month);
         monthSelect.replaceWith(num);
       }
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      return { filename, summaryWasHidden };
-    }
-
-    function restoreAfterPdf(summaryWasHidden) {
-      if (summaryWasHidden) {
-        summaryView.classList.add("hidden");
-        form.classList.remove("hidden");
-      }
-      summaryDoc.classList.remove("pdf-export");
-      renderSummary();
-    }
-
-    function pdfWorker(filename) {
-      return html2pdf()
-        .set({
-          margin: [12, 12, 12, 12],
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: ["css", "legacy"] },
-        })
-        .from(summaryDoc);
-    }
-
-    function printPdfBlob(blob) {
-      const url = URL.createObjectURL(blob);
-      const frame = document.createElement("iframe");
-      frame.style.cssText = "position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;";
-      document.body.appendChild(frame);
-      let printed = false;
-      const tryPrint = () => {
-        if (printed) return;
-        printed = true;
-        try {
-          frame.contentWindow.focus();
-          frame.contentWindow.print();
-        } catch {
-          window.open(url, "_blank");
-        }
-        setTimeout(() => {
-          frame.remove();
-          URL.revokeObjectURL(url);
-        }, 120000);
-      };
-      frame.onload = tryPrint;
-      frame.src = url;
-      setTimeout(tryPrint, 1200);
-    }
-
-    async function downloadSummaryPdf() {
-      const prep = await prepareSummaryForPdf();
-      if (!prep) return;
-      setPdfBusy(true, "PDF作成中…");
+      setPdfBusy(true);
       showToast("PDFを作成しています…", "ok");
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       try {
         if (typeof html2pdf === "undefined") throw new Error("pdf-lib");
-        await pdfWorker(prep.filename).save();
+        await html2pdf()
+          .set({
+            margin: [10, 12, 10, 12],
+            filename,
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+            pagebreak: { mode: ["css", "legacy"] },
+          })
+          .from(summaryDoc)
+          .save();
         showToast("PDFを保存しました。", "ok");
       } catch {
-        showToast("PDFの作成に失敗しました。", "ng");
+        showToast("自動保存できないため、印刷画面から「PDFに保存」を選んでください。", "ng");
+        window.print();
       } finally {
-        restoreAfterPdf(prep.summaryWasHidden);
-        setPdfBusy(false);
-      }
-    }
-
-    async function printSummaryPdf() {
-      const prep = await prepareSummaryForPdf();
-      if (!prep) return;
-      setPdfBusy(true, "印刷準備中…");
-      showToast("印刷用データを作成しています…", "ok");
-      try {
-        if (typeof html2pdf === "undefined") throw new Error("pdf-lib");
-        const pdf = await pdfWorker(prep.filename).toPdf().get("pdf");
-        pdf.autoPrint();
-        printPdfBlob(pdf.output("blob"));
-        showToast("印刷画面を開きました。日付とURLは出ません。", "ok");
-      } catch {
-        showToast("印刷の準備に失敗しました。PDFで保存してから印刷してください。", "ng");
-      } finally {
-        restoreAfterPdf(prep.summaryWasHidden);
+        if (summaryWasHidden) {
+          summaryView.classList.add("hidden");
+          form.classList.remove("hidden");
+        }
+        summaryDoc.classList.remove("pdf-export");
+        renderSummary();
         setPdfBusy(false);
       }
     }
@@ -1098,12 +1058,24 @@
     document.getElementById("bannerSummaryBtn").addEventListener("click", showSummary);
     document.getElementById("toFormBtn").addEventListener("click", showForm);
     document.getElementById("backBtn").addEventListener("click", showForm);
-    document.getElementById("printBtn").addEventListener("click", printSummaryPdf);
-    document.addEventListener("keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === "p" || e.key === "P")) {
-        e.preventDefault();
-        printSummaryPdf();
+    document.getElementById("printBtn").addEventListener("click", () => {
+      document.title = "\u00A0";
+      renderSummary();
+      window.print();
+    });
+    window.addEventListener("beforeprint", () => {
+      document.title = "\u00A0";
+      renderSummary();
+      const sel = document.getElementById("monthSelect");
+      if (sel) {
+        const num = document.createElement("span");
+        num.textContent = String(summaryMonth());
+        sel.replaceWith(num);
       }
+    });
+    window.addEventListener("afterprint", () => {
+      document.title = PAGE_TITLE;
+      renderSummary();
     });
     for (let n = 1; n <= 12; n++) {
       const opt = document.createElement("option");
