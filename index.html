@@ -424,7 +424,7 @@
     @media print {
       @page {
         size: A4;
-        margin: 8mm;
+        margin: 5mm 12mm 14mm 12mm;
       }
       @page {
         @top-left { content: none; }
@@ -904,7 +904,7 @@
       });
     }
 
-    const PDF_MARGIN = [8, 8, 8, 8];
+    const PDF_MARGIN = [5, 12, 14, 12];
 
     async function withSummaryPdf(run) {
       try { await refreshRecords(); } catch { /* keep current */ }
