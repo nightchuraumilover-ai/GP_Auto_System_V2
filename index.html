@@ -391,17 +391,9 @@
     .minutes-doc .raw {
       font-size: 11pt;
       font-weight: 400;
-      margin: 0;
-    }
-    .minutes-doc .raw-line {
-      font-size: 11pt;
-      font-weight: 400;
-      line-height: 1.42;
-      min-height: 1.42em;
+      white-space: pre-wrap;
       word-break: break-word;
-      overflow-wrap: anywhere;
-      break-inside: avoid;
-      page-break-inside: avoid;
+      margin: 0;
     }
     .minutes-doc .empty-note {
       color: var(--muted);
@@ -429,29 +421,10 @@
       .theme { font-size: 28px; letter-spacing: 0.24em; }
     }
 
-    .print-mask-top,
-    .print-mask-bottom {
-      display: none;
-    }
-    .print-pages { display: none; }
-    .print-pages.pdf-capture {
-      display: block !important;
-      position: relative;
-    }
-    .print-page {
-      width: 210mm;
-      height: 297mm;
-      padding: 18mm 16mm 22mm 16mm;
-      box-sizing: border-box;
-      background: #fff;
-      color: #111;
-      overflow: hidden;
-    }
-
     @media print {
       @page {
         size: A4;
-        margin: 0;
+        margin: 16mm 14mm;
       }
       @page {
         @top-left { content: none; }
@@ -472,8 +445,7 @@
       .no-print,
       .login-gate,
       #formView,
-      #formView.hidden,
-      #summaryDoc {
+      #formView.hidden {
         display: none !important;
       }
       .page {
@@ -493,36 +465,10 @@
         padding: 0;
         overflow: visible !important;
       }
-      .print-pages,
-      .print-pages.hidden {
-        display: block !important;
-      }
-      .print-page {
-        break-after: page;
-        page-break-after: always;
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-      .print-page:last-child {
-        break-after: auto;
-        page-break-after: auto;
-      }
-      .print-mask-top,
-      .print-mask-bottom {
-        display: block;
-        position: fixed;
-        left: 0;
-        right: 0;
-        background: #fff;
-        z-index: 2147483647;
-      }
-      .print-mask-top {
-        top: 0;
-        height: 14mm;
-      }
-      .print-mask-bottom {
-        bottom: 0;
-        height: 16mm;
+      .minutes-doc {
+        font-size: 11pt;
+        line-height: 1.42;
+        overflow: visible !important;
       }
       .minutes-doc .month-select,
       .minutes-doc.pdf-export .month-select {
@@ -550,8 +496,6 @@
   </style>
 </head>
 <body class="is-locked">
-  <div class="print-mask-top" aria-hidden="true"></div>
-  <div class="print-mask-bottom" aria-hidden="true"></div>
   <div class="login-gate" id="loginGate">
     <form class="login-box" id="loginForm">
       <h1>Meeting議事録</h1>
@@ -676,7 +620,6 @@
 
     <section class="sheet hidden" id="summaryView">
       <article class="minutes-doc" id="summaryDoc"></article>
-      <div class="print-pages minutes-doc hidden" id="printPages"></div>
       <div class="actions no-print">
         <button type="button" class="ghost" id="printBtn">印刷</button>
         <button type="button" class="gold" id="pdfBtn">PDFで保存</button>
@@ -709,7 +652,6 @@
     const progressText = document.getElementById("progressText");
     const allDoneBanner = document.getElementById("allDoneBanner");
     const summaryDoc = document.getElementById("summaryDoc");
-    const printPages = document.getElementById("printPages");
     const summaryToast = document.getElementById("summaryToast");
 
     let currentStore = "";
@@ -862,116 +804,13 @@
         .replaceAll(">", "&gt;");
     }
 
-    function linesHtml(text) {
-      return String(text ?? "")
-        .replaceAll("\r\n", "\n")
-        .split("\n")
-        .map((line) => `<div class="raw-line">${line ? raw(line) : "&nbsp;"}</div>`)
-        .join("");
-    }
-
     function block(title, text) {
       if (!hasText(text)) return "";
-      return `<div class="sub-title">${title}</div><div class="raw">${linesHtml(text)}</div>`;
+      return `<div class="sub-title">${title}</div><div class="raw">${raw(text)}</div>`;
     }
 
     function storeHeading(name) {
       return `<div class="store-title">『${name}』</div>`;
-    }
-
-    function mmToPx(mm) {
-      const probe = document.createElement("div");
-      probe.style.cssText = "position:absolute;left:-9999px;width:100mm;height:0;visibility:hidden;";
-      document.body.appendChild(probe);
-      const px = probe.offsetWidth / 100;
-      probe.remove();
-      return mm * px;
-    }
-
-    function boxHeight(el) {
-      const r = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      return r.height + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
-    }
-
-    function flattenAtoms(root) {
-      const atoms = [];
-      for (const child of [...root.children]) {
-        if (child.classList.contains("raw")) {
-          for (const line of [...child.children]) atoms.push(line.cloneNode(true));
-        } else {
-          atoms.push(child.cloneNode(true));
-        }
-      }
-      return atoms;
-    }
-
-    function isKeepWithNext(el) {
-      return el.tagName === "H1"
-        || el.classList.contains("sec-title")
-        || el.classList.contains("store-title")
-        || el.classList.contains("sub-title");
-    }
-
-    function freezeMonthTitle() {
-      const sel = document.getElementById("monthSelect");
-      if (!sel) return;
-      const num = document.createElement("span");
-      num.textContent = String(summaryMonth());
-      sel.replaceWith(num);
-    }
-
-    function buildPrintPages() {
-      freezeMonthTitle();
-      printPages.innerHTML = "";
-      const innerW = mmToPx(178);
-      const innerH = mmToPx(248);
-      const measure = document.createElement("div");
-      measure.className = "minutes-doc";
-      measure.style.cssText = `position:absolute;left:-9999px;top:0;width:${innerW}px;visibility:hidden;`;
-      document.body.appendChild(measure);
-
-      function peekHeight(node) {
-        const clone = node.cloneNode(true);
-        measure.appendChild(clone);
-        const h = boxHeight(clone);
-        clone.remove();
-        return h;
-      }
-
-      const atoms = flattenAtoms(summaryDoc);
-      let page = document.createElement("div");
-      page.className = "print-page";
-      printPages.appendChild(page);
-      let used = 0;
-
-      for (let i = 0; i < atoms.length; i++) {
-        const el = atoms[i];
-        let need = peekHeight(el);
-        if (isKeepWithNext(el) && i + 1 < atoms.length) need += peekHeight(atoms[i + 1]);
-        if (used > 0 && used + need > innerH) {
-          page = document.createElement("div");
-          page.className = "print-page";
-          printPages.appendChild(page);
-          used = 0;
-        }
-        const h = peekHeight(el);
-        page.appendChild(el);
-        used += h;
-      }
-      measure.remove();
-      printPages.classList.remove("hidden");
-    }
-
-    function clearPrintPages() {
-      printPages.innerHTML = "";
-      printPages.classList.add("hidden");
-      printPages.classList.remove("pdf-capture");
-    }
-
-    function preparePrintLayout() {
-      renderSummary();
-      buildPrintPages();
     }
 
     function defaultMonth() {
@@ -1086,34 +925,34 @@
       const summaryWasHidden = summaryView.classList.contains("hidden");
       form.classList.add("hidden");
       summaryView.classList.remove("hidden");
-      preparePrintLayout();
-      printPages.classList.add("pdf-capture");
+      summaryDoc.classList.add("pdf-export");
+      const monthSelect = document.getElementById("monthSelect");
+      if (monthSelect) {
+        const num = document.createElement("span");
+        num.textContent = String(month);
+        monthSelect.replaceWith(num);
+      }
       setPdfBusy(true);
       showToast("PDFを作成しています…", "ok");
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       try {
         if (typeof html2pdf === "undefined") throw new Error("pdf-lib");
-        const pageEls = [...printPages.querySelectorAll(".print-page")];
-        if (!pageEls.length) throw new Error("empty");
-        const opt = {
-          margin: 0,
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0 },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        };
-        const pdf = await html2pdf().set(opt).from(pageEls[0]).toPdf().get("pdf");
-        for (let i = 1; i < pageEls.length; i++) {
-          const canvas = await html2pdf().set(opt).from(pageEls[i]).toCanvas().get("canvas");
-          pdf.addPage();
-          pdf.addImage(canvas.toDataURL("image/jpeg", 0.98), "JPEG", 0, 0, 210, 297);
-        }
-        pdf.save(filename);
+        await html2pdf()
+          .set({
+            margin: [16, 14, 16, 14],
+            filename,
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+            pagebreak: { mode: ["css", "legacy"] },
+          })
+          .from(summaryDoc)
+          .save();
         showToast("PDFを保存しました。", "ok");
       } catch {
         showToast("PDFを作れませんでした。印刷から「PDFに保存」を選んでください。", "ng");
       } finally {
-        clearPrintPages();
+        summaryDoc.classList.remove("pdf-export");
         renderSummary();
         if (summaryWasHidden) {
           summaryView.classList.add("hidden");
@@ -1183,7 +1022,7 @@
       if (managers.length) {
         html += `<div class="sec-title">店長業務報告</div>`;
         managers.forEach((name) => {
-          html += storeHeading(name) + `<div class="raw">${linesHtml(records[name].managerReport)}</div>`;
+          html += storeHeading(name) + `<div class="raw">${raw(records[name].managerReport)}</div>`;
         });
       }
 
@@ -1229,16 +1068,21 @@
     document.getElementById("backBtn").addEventListener("click", showForm);
     document.getElementById("printBtn").addEventListener("click", () => {
       document.title = "\u00A0";
-      preparePrintLayout();
+      renderSummary();
       window.print();
     });
     window.addEventListener("beforeprint", () => {
       document.title = "\u00A0";
-      if (!printPages.querySelector(".print-page")) preparePrintLayout();
+      renderSummary();
+      const sel = document.getElementById("monthSelect");
+      if (sel) {
+        const num = document.createElement("span");
+        num.textContent = String(summaryMonth());
+        sel.replaceWith(num);
+      }
     });
     window.addEventListener("afterprint", () => {
       document.title = PAGE_TITLE;
-      clearPrintPages();
       renderSummary();
     });
     for (let n = 1; n <= 12; n++) {
