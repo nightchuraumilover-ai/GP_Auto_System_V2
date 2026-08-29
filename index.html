@@ -285,6 +285,12 @@
     textarea { min-height: 96px; resize: vertical; line-height: 1.7; }
 
     .section { margin-top: 26px; }
+    .section-note {
+      font-size: 13px;
+      line-height: 1.75;
+      color: var(--muted);
+      margin: -4px 0 16px;
+    }
     .section h2 {
       font-family: "Shippori Mincho", serif;
       font-size: 20px;
@@ -603,7 +609,28 @@
       </section>
 
       <section class="section">
-        <h2>その他</h2>
+        <h2>４、売上アップに向けた各店の取り組みについて</h2>
+        <p class="section-note">各エリアには、当店と同じような料金帯・コンセプトのお店が多数あります。その中で、1人でも多くのご新規様やリピーター様に当店を選んでいただくために、以下について各店で考えてください。「接客を頑張る」などの抽象的な内容ではなく、できるだけ具体的に「何をするか」まで記入してください。各店の良いアイデアは全店で共有し、今後の売上アップにつなげていきます。</p>
+        <div class="item">
+          <h3>① 他店には負けない「自店の強み」</h3>
+          <textarea name="salesStrength" placeholder="具体的な強み（何が、どのように強いか）"></textarea>
+        </div>
+        <div class="item">
+          <h3>② 新規・リピーターを増やすためにできること</h3>
+          <textarea name="salesNewRepeat" placeholder="何をするかまで具体的に"></textarea>
+        </div>
+        <div class="item">
+          <h3>③ 現在、他店に負けている・改善が必要だと思うこと</h3>
+          <textarea name="salesImprove" placeholder="負けている点・改善が必要な点"></textarea>
+        </div>
+        <div class="item">
+          <h3>④ 売上アップのために、新しく取り組めそうなこと</h3>
+          <textarea name="salesNewAction" placeholder="新しく取り組めそうなこと（具体的な内容）"></textarea>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>５、その他</h2>
         <textarea name="other" placeholder="その他連絡事項"></textarea>
       </section>
 
@@ -632,7 +659,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script>
     const STORES = ["堺東", "和歌山", "梅田", "谷九", "日本橋", "十三", "京橋"];
-    const FIELDS = ["datetime", "place", "attendees", "newCast", "leaveCast", "castCount", "fixedShift", "managerReport", "upcoming", "proposals", "other"];
+    const FIELDS = ["datetime", "place", "attendees", "newCast", "leaveCast", "castCount", "fixedShift", "managerReport", "upcoming", "proposals", "salesStrength", "salesNewRepeat", "salesImprove", "salesNewAction", "other"];
     const AUTH_ID = "138c3adda5424d1633a19103430ea818f4915a177dc35789e196f96b22e8fee6";
     const AUTH_PW = "2a2f2bc76f077bf83cebf4332609716074b89c193ff3e84d9cf440d5740a842f";
     const GH_OWNER = "nightchuraumilover-ai";
@@ -1083,9 +1110,27 @@
         });
       }
 
+      const sales = saved.filter((name) =>
+        hasText(records[name].salesStrength)
+        || hasText(records[name].salesNewRepeat)
+        || hasText(records[name].salesImprove)
+        || hasText(records[name].salesNewAction)
+      );
+      if (sales.length) {
+        html += `<div class="sec-title">売上アップに向けた各店の取り組みについて</div>`;
+        sales.forEach((name) => {
+          const rec = records[name];
+          html += storeHeading(name)
+            + block("他店には負けない「自店の強み」", rec.salesStrength)
+            + block("新規・リピーターを増やすためにできること", rec.salesNewRepeat)
+            + block("現在、他店に負けている・改善が必要だと思うこと", rec.salesImprove)
+            + block("売上アップのために、新しく取り組めそうなこと", rec.salesNewAction);
+        });
+      }
+
       const others = saved.filter((name) => hasText(records[name].other));
       if (others.length) {
-        html += `<div class="sec-title">4. その他</div>`;
+        html += `<div class="sec-title">その他</div>`;
         others.forEach((name) => {
           html += storeHeading(name) + block("その他", records[name].other);
         });
