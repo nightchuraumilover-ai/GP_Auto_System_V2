@@ -438,27 +438,36 @@
         background: #fff !important;
         margin: 0;
         padding: 0;
+        min-height: 0 !important;
+        height: auto !important;
       }
       .no-print,
       .login-gate,
+      .topbar,
       #formView,
+      #formView.sheet,
       #formView.hidden {
         display: none !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        visibility: hidden !important;
       }
       .page {
         width: auto;
         margin: 0;
         padding: 0;
+        min-height: 0;
       }
-      .sheet,
       #summaryView,
       #summaryView.hidden,
       #summaryView.sheet {
         display: block !important;
+        visibility: visible !important;
         box-shadow: none;
         border: none;
         background: #fff;
         padding: 0;
+        margin: 0;
       }
       .minutes-doc { font-size: 11pt; line-height: 1.38; }
       .minutes-doc .month-select,
@@ -1065,6 +1074,8 @@
     });
     window.addEventListener("beforeprint", () => {
       document.title = "\u00A0";
+      form.classList.add("hidden");
+      summaryView.classList.remove("hidden");
       renderSummary();
       const sel = document.getElementById("monthSelect");
       if (sel) {
