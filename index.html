@@ -422,38 +422,14 @@
     }
 
     @media print {
-      @page {
-        size: A4;
-        margin: 16mm 14mm;
-      }
-      @page {
-        @top-left { content: none; }
-        @top-center { content: none; }
-        @top-right { content: none; }
-        @bottom-left { content: none; }
-        @bottom-center { content: none; }
-        @bottom-right { content: none; }
-      }
-      html, body {
-        background: #fff !important;
-        margin: 0;
-        padding: 0;
-        min-height: 0 !important;
-        height: auto !important;
-        overflow: visible !important;
-      }
+      @page { size: A4; margin: 12mm 12mm; }
+      body { background: #fff; }
       .no-print,
       .login-gate,
-      #formView,
-      #formView.hidden {
+      #formView {
         display: none !important;
       }
-      .page {
-        width: auto;
-        margin: 0;
-        padding: 0;
-        overflow: visible !important;
-      }
+      .page { width: auto; margin: 0; }
       .sheet,
       #summaryView,
       #summaryView.hidden,
@@ -463,13 +439,8 @@
         border: none;
         background: #fff;
         padding: 0;
-        overflow: visible !important;
       }
-      .minutes-doc {
-        font-size: 11pt;
-        line-height: 1.42;
-        overflow: visible !important;
-      }
+      .minutes-doc { font-size: 11pt; line-height: 1.38; }
       .minutes-doc .month-select,
       .minutes-doc.pdf-export .month-select {
         appearance: none;
@@ -939,7 +910,7 @@
         if (typeof html2pdf === "undefined") throw new Error("pdf-lib");
         await html2pdf()
           .set({
-            margin: [16, 14, 16, 14],
+            margin: [10, 12, 10, 12],
             filename,
             image: { type: "jpeg", quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
@@ -950,14 +921,15 @@
           .save();
         showToast("PDFを保存しました。", "ok");
       } catch {
-        showToast("PDFを作れませんでした。印刷から「PDFに保存」を選んでください。", "ng");
+        showToast("自動保存できないため、印刷画面から「PDFに保存」を選んでください。", "ng");
+        window.print();
       } finally {
-        summaryDoc.classList.remove("pdf-export");
-        renderSummary();
         if (summaryWasHidden) {
           summaryView.classList.add("hidden");
           form.classList.remove("hidden");
         }
+        summaryDoc.classList.remove("pdf-export");
+        renderSummary();
         setPdfBusy(false);
       }
     }
