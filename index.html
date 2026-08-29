@@ -106,7 +106,27 @@
       font-size: 11px;
     }
 
-    .top-actions { display: flex; gap: 8px; }
+    .top-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    .month-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--gold-2);
+      letter-spacing: 0.12em;
+      font-size: 12px;
+    }
+    .month-top select,
+    .month-select {
+      font-family: inherit;
+      font-size: 14px;
+      letter-spacing: 0.06em;
+      border: 1px solid var(--gold-2);
+      background: #fffdf8;
+      color: var(--ink);
+      padding: 6px 8px;
+      cursor: pointer;
+    }
 
     .sheet {
       background: linear-gradient(180deg, #fbf6ea 0%, var(--paper) 100%);
@@ -335,6 +355,19 @@
       letter-spacing: 0.06em;
       margin: 0 0 0.7em;
     }
+    .minutes-doc .month-select {
+      font-family: "Yu Gothic", "Yu Gothic UI", "Meiryo", sans-serif;
+      font-size: 12pt;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      border: 1px solid #c9b896;
+      background: #fffdf8;
+      color: #111;
+      padding: 0 4px;
+      margin: 0 1px 0 0;
+      vertical-align: baseline;
+      cursor: pointer;
+    }
     .minutes-doc .store-title {
       font-size: 11pt;
       font-weight: 700;
@@ -388,17 +421,67 @@
     }
 
     @media print {
-      @page { size: A4; margin: 10mm 12mm; }
-      body { background: #fff; }
-      .no-print, .login-gate { display: none !important; }
-      .page { width: auto; margin: 0; }
-      .sheet, #summaryView.sheet {
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      @page {
+        @top-left { content: none; }
+        @top-center { content: none; }
+        @top-right { content: none; }
+        @bottom-left { content: none; }
+        @bottom-center { content: none; }
+        @bottom-right { content: none; }
+      }
+      html, body {
+        background: #fff !important;
+        margin: 0;
+        padding: 0;
+      }
+      .no-print,
+      .login-gate,
+      #formView,
+      #formView.hidden {
+        display: none !important;
+      }
+      .page {
+        width: auto;
+        margin: 0;
+        padding: 10mm 12mm;
+      }
+      .sheet,
+      #summaryView,
+      #summaryView.hidden,
+      #summaryView.sheet {
+        display: block !important;
         box-shadow: none;
         border: none;
         background: #fff;
         padding: 0;
       }
       .minutes-doc { font-size: 11pt; line-height: 1.38; }
+      .minutes-doc .month-select,
+      .minutes-doc.pdf-export .month-select {
+        appearance: none;
+        -webkit-appearance: none;
+        border: none;
+        background: transparent;
+        padding: 0;
+        margin: 0;
+        color: inherit;
+        font: inherit;
+        pointer-events: none;
+      }
+    }
+    .minutes-doc.pdf-export .month-select {
+      appearance: none;
+      -webkit-appearance: none;
+      border: none;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      color: inherit;
+      font: inherit;
     }
   </style>
 </head>
@@ -423,7 +506,10 @@
   </div>
   <div class="page">
     <div class="topbar no-print">
-      <div class="badge">共有保存 / PCオフ対応</div>
+      <label class="month-top">
+        対象月
+        <select id="monthSelectTop" aria-label="まとめの対象月"></select>
+      </label>
       <div class="top-actions">
         <button type="button" class="ghost" id="toFormBtn">入力画面</button>
         <button type="button" class="gold" id="toSummaryBtn">全店まとめを見る</button>
@@ -543,6 +629,8 @@
     const GH_REPO = "GP_Auto_System_V2";
     const GH_PATH = "minutes-data.json";
     const GH_TOKEN = ["g","hp","_","bJa3X9tn5nKQ3yZmgYiBFR6HxuyvOa40KDWc"].join("");
+    const PAGE_TITLE = document.title;
+    const monthSelectTop = document.getElementById("monthSelectTop");
 
     const form = document.getElementById("formView");
     const summaryView = document.getElementById("summaryView");
@@ -558,6 +646,7 @@
 
     let currentStore = "";
     let records = {};
+    let chosenMonth = 0;
 
     function unlockApp() {
       document.body.classList.remove("is-locked");
@@ -595,12 +684,20 @@
       if (!res.ok) throw new Error("load");
       const data = await res.json();
       const parsed = JSON.parse(b64decode(data.content || ""));
-      return { sha: data.sha, stores: parsed.stores || {} };
+      const month = Number(parsed.month);
+      return {
+        sha: data.sha,
+        stores: parsed.stores || {},
+        month: month >= 1 && month <= 12 ? month : 0,
+      };
     }
 
     async function refreshRecords() {
       const file = await fetchRecordsFile();
       records = file.stores;
+      if (file.month) chosenMonth = file.month;
+      else if (!(chosenMonth >= 1 && chosenMonth <= 12)) chosenMonth = defaultMonth();
+      syncMonthControls();
       paintButtons();
       if (currentStore && records[currentStore]) writeForm(records[currentStore]);
     }
@@ -611,7 +708,7 @@
         const file = await fetchRecordsFile();
         const stores = { ...file.stores };
         mutator(stores);
-        const body = JSON.stringify({ stores }, null, 2);
+        const body = JSON.stringify({ stores, month: summaryMonth() }, null, 2);
         const res = await fetch(
           `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`,
           {
@@ -706,7 +803,7 @@
       return `<div class="store-title">『${name}』</div>`;
     }
 
-    function summaryMonth() {
+    function defaultMonth() {
       const dates = STORES
         .map((s) => records[s]?.datetime)
         .filter(Boolean)
@@ -714,6 +811,39 @@
         .filter((d) => !Number.isNaN(d.getTime()));
       const d = dates.sort((a, b) => b - a)[0] || new Date();
       return d.getMonth() + 1;
+    }
+
+    function summaryMonth() {
+      if (chosenMonth >= 1 && chosenMonth <= 12) return chosenMonth;
+      return defaultMonth();
+    }
+
+    function monthOptionsHtml(selected) {
+      let html = "";
+      for (let n = 1; n <= 12; n++) {
+        html += `<option value="${n}"${n === selected ? " selected" : ""}>${n}</option>`;
+      }
+      return html;
+    }
+
+    function syncMonthControls() {
+      const m = String(summaryMonth());
+      if (monthSelectTop) monthSelectTop.value = m;
+      const inner = document.getElementById("monthSelect");
+      if (inner) inner.value = m;
+    }
+
+    async function onMonthChange(value) {
+      const n = Number(value);
+      if (!(n >= 1 && n <= 12)) return;
+      chosenMonth = n;
+      syncMonthControls();
+      renderSummary();
+      try {
+        await writeRecords((stores) => stores);
+      } catch {
+        showToast("月の保存に失敗しました。", "ng");
+      }
     }
 
     function paintButtons() {
@@ -785,6 +915,13 @@
       const summaryWasHidden = summaryView.classList.contains("hidden");
       form.classList.add("hidden");
       summaryView.classList.remove("hidden");
+      summaryDoc.classList.add("pdf-export");
+      const monthSelect = document.getElementById("monthSelect");
+      if (monthSelect) {
+        const num = document.createElement("span");
+        num.textContent = String(month);
+        monthSelect.replaceWith(num);
+      }
       setPdfBusy(true);
       showToast("PDFを作成しています…", "ok");
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -810,6 +947,8 @@
           summaryView.classList.add("hidden");
           form.classList.remove("hidden");
         }
+        summaryDoc.classList.remove("pdf-export");
+        renderSummary();
         setPdfBusy(false);
       }
     }
@@ -851,7 +990,7 @@
 
     function renderSummary() {
       const month = summaryMonth();
-      let html = `<h1>${month}月度店長会議議事録まとめ</h1>`;
+      let html = `<h1><select id="monthSelect" class="month-select" aria-label="対象月">${monthOptionsHtml(month)}</select>月度店長会議議事録まとめ</h1>`;
       const saved = STORES.filter((name) => records[name]);
 
       if (!saved.length) {
@@ -918,7 +1057,36 @@
     document.getElementById("bannerSummaryBtn").addEventListener("click", showSummary);
     document.getElementById("toFormBtn").addEventListener("click", showForm);
     document.getElementById("backBtn").addEventListener("click", showForm);
-    document.getElementById("printBtn").addEventListener("click", () => window.print());
+    document.getElementById("printBtn").addEventListener("click", () => {
+      document.title = "\u00A0";
+      renderSummary();
+      window.print();
+    });
+    window.addEventListener("beforeprint", () => {
+      document.title = "\u00A0";
+      renderSummary();
+      const sel = document.getElementById("monthSelect");
+      if (sel) {
+        const num = document.createElement("span");
+        num.textContent = String(summaryMonth());
+        sel.replaceWith(num);
+      }
+    });
+    window.addEventListener("afterprint", () => {
+      document.title = PAGE_TITLE;
+      renderSummary();
+    });
+    for (let n = 1; n <= 12; n++) {
+      const opt = document.createElement("option");
+      opt.value = String(n);
+      opt.textContent = `${n}月`;
+      monthSelectTop.appendChild(opt);
+    }
+    monthSelectTop.value = String(summaryMonth());
+    monthSelectTop.addEventListener("change", (e) => onMonthChange(e.target.value));
+    summaryDoc.addEventListener("change", (e) => {
+      if (e.target && e.target.id === "monthSelect") onMonthChange(e.target.value);
+    });
     document.getElementById("pdfBtn").addEventListener("click", downloadSummaryPdf);
     document.getElementById("pdfBtnTop").addEventListener("click", downloadSummaryPdf);
   </script>
