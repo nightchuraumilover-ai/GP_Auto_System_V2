@@ -4,7 +4,7 @@
       "datetime": "2026-09-25T21:00",
       "place": "堺東",
       "attendees": "田﨑、伊藤、松岡、安藤",
-      "newCast": "",
+      "newCast": "テスト",
       "leaveCast": "",
       "castCount": "",
       "fixedShift": "",
@@ -17,7 +17,7 @@
       "salesNewAction": "",
       "other": "",
       "store": "堺東",
-      "savedAt": "2026-09-21T16:55:16.317Z"
+      "savedAt": "2026-09-21T16:55:35.680Z"
     }
   },
   "month": 10
