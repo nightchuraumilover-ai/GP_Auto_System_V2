@@ -702,11 +702,18 @@
       return decodeURIComponent(escape(atob(String(text || "").replace(/\s/g, ""))));
     }
 
-    async function ghHeaders(extra = {}) {
+    function ghReadHeaders() {
+      return {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      };
+    }
+
+    function ghWriteHeaders() {
       const headers = {
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
-        ...extra,
+        "Content-Type": "application/json",
       };
       if (GH_TOKEN) headers.Authorization = "Bearer " + GH_TOKEN;
       return headers;
@@ -715,7 +722,7 @@
     async function fetchRecordsFile() {
       const res = await fetch(
         `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}?t=${Date.now()}`,
-        { headers: await ghHeaders(), cache: "no-store" }
+        { headers: ghReadHeaders(), cache: "no-store" }
       );
       if (!res.ok) throw new Error("load");
       const data = await res.json();
@@ -749,7 +756,7 @@
           `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`,
           {
             method: "PUT",
-            headers: await ghHeaders({ "Content-Type": "application/json" }),
+            headers: ghWriteHeaders(),
             body: JSON.stringify({
               message: "Update shared minutes",
               content: b64encode(body),
@@ -782,7 +789,7 @@
         sessionStorage.setItem("minutes-v2-auth", "ok");
         unlockApp();
       } catch {
-        error.textContent = "データの読み込みに失敗しました。";
+        error.textContent = "データの読み込みに失敗しました。通信を確認して、もう一度ログインしてください。";
         error.classList.add("is-on");
       }
     });
@@ -1050,7 +1057,7 @@
           allDoneBanner.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
       } catch {
-        showToast("保存に失敗しました。少し待ってからもう一度保存してください。", "ng");
+        showToast("保存に失敗しました。接続キーの期限が切れている可能性があります。", "ng");
       }
     });
 
