@@ -94,6 +94,25 @@
       "other": "",
       "store": "谷九",
       "savedAt": "2026-09-30T17:30:02.385Z"
+    },
+    "日本橋": {
+      "datetime": "2026-10-08T10:05",
+      "place": "日本橋",
+      "attendees": "松岡",
+      "newCast": "9/3　きら　（ガールズ）\n9/8　るか　（出戻り）\n9/20　ゆうり　（バニラ）",
+      "leaveCast": "9/3　きら　音信不通\n9/8　るか　バックが合わない。不明\n9/20　ゆうり　彼氏にバレた為",
+      "castCount": "",
+      "fixedShift": "",
+      "managerReport": "",
+      "upcoming": "",
+      "proposals": "",
+      "salesStrength": "",
+      "salesNewRepeat": "",
+      "salesImprove": "",
+      "salesNewAction": "",
+      "other": "",
+      "store": "日本橋",
+      "savedAt": "2026-10-01T01:36:24.131Z"
     }
   },
   "month": 9
