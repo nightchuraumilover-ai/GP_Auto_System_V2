@@ -397,9 +397,17 @@
     .minutes-doc .raw {
       font-size: 11pt;
       font-weight: 400;
-      white-space: pre-wrap;
-      word-break: break-word;
       margin: 0;
+    }
+    .minutes-doc .raw-line {
+      font-size: inherit;
+      font-weight: inherit;
+      line-height: 1.42;
+      min-height: 1.42em;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
     .minutes-doc .empty-note {
       color: var(--muted);
@@ -837,9 +845,17 @@
         .replaceAll(">", "&gt;");
     }
 
+    function rawLines(text) {
+      return String(text ?? "")
+        .replaceAll("\r\n", "\n")
+        .split("\n")
+        .map((line) => `<div class="raw-line">${raw(line) || "&nbsp;"}</div>`)
+        .join("");
+    }
+
     function block(title, text) {
       if (!hasText(text)) return "";
-      return `<div class="sub-title">${title}</div><div class="raw">${raw(text)}</div>`;
+      return `<div class="sub-title">${title}</div><div class="raw">${rawLines(text)}</div>`;
     }
 
     function storeHeading(name) {
@@ -947,6 +963,29 @@
       });
     }
 
+    function keepLinesOffPageEdges(root, topMm, bottomMm) {
+      const pageInnerPx = ((297 - topMm - bottomMm) * 96) / 25.4;
+      const sel = ".raw-line, .store-title, .sec-title, .sub-title";
+      for (let n = 0; n < 160; n++) {
+        const rootTop = root.getBoundingClientRect().top;
+        let moved = false;
+        for (const el of root.querySelectorAll(sel)) {
+          const box = el.getBoundingClientRect();
+          const top = box.top - rootTop;
+          const bottom = box.bottom - rootTop;
+          const pageEnd = (Math.floor(top / pageInnerPx) + 1) * pageInnerPx;
+          if (top < pageEnd && bottom > pageEnd + 0.5) {
+            const spacer = document.createElement("div");
+            spacer.style.height = `${Math.ceil(pageEnd - top)}px`;
+            el.parentNode.insertBefore(spacer, el);
+            moved = true;
+            break;
+          }
+        }
+        if (!moved) break;
+      }
+    }
+
     async function withSummaryPdf(run) {
       try { await refreshRecords(); } catch { /* keep current */ }
       renderSummary();
@@ -968,6 +1007,7 @@
       }
       setPdfBusy(true);
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      keepLinesOffPageEdges(summaryDoc, 10, 10);
       try {
         if (typeof html2pdf === "undefined") throw new Error("pdf-lib");
         const worker = html2pdf()
@@ -977,7 +1017,7 @@
             image: { type: "jpeg", quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
             jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-            pagebreak: { mode: ["css", "legacy"] },
+            pagebreak: { mode: ["css", "legacy"], avoid: [".raw-line", ".store-title", ".sec-title", ".sub-title"] },
           })
           .from(summaryDoc);
         await run(worker, filename);
@@ -1102,7 +1142,7 @@
       if (managers.length) {
         html += `<div class="sec-title">店長業務報告</div>`;
         managers.forEach((name) => {
-          html += storeHeading(name) + `<div class="raw">${raw(records[name].managerReport)}</div>`;
+          html += storeHeading(name) + `<div class="raw">${rawLines(records[name].managerReport)}</div>`;
         });
       }
 
