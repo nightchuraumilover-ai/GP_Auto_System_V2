@@ -489,6 +489,25 @@
         pointer-events: none;
       }
     }
+    .minutes-doc.pdf-export {
+      width: 170mm;
+      max-width: 170mm;
+      box-sizing: border-box;
+      font-size: 10pt;
+      line-height: 1.35;
+      overflow: visible;
+    }
+    .minutes-doc.pdf-export h1,
+    .minutes-doc.pdf-export .sec-title {
+      font-size: 11pt;
+    }
+    .minutes-doc.pdf-export .store-title,
+    .minutes-doc.pdf-export .sub-title,
+    .minutes-doc.pdf-export .raw {
+      font-size: 10pt;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     .minutes-doc.pdf-export .month-select {
       appearance: none;
       -webkit-appearance: none;
@@ -972,12 +991,18 @@
         if (typeof html2pdf === "undefined") throw new Error("pdf-lib");
         const worker = html2pdf()
           .set({
-            margin: [8, 12, 12, 12],
+            margin: [10, 12, 10, 12],
             filename,
-            image: { type: "jpeg", quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+            image: { type: "jpeg", quality: 0.96 },
+            html2canvas: {
+              scale: 2,
+              useCORS: true,
+              backgroundColor: "#ffffff",
+              windowWidth: 794,
+              width: 642,
+            },
             jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-            pagebreak: { mode: ["css", "legacy"] },
+            pagebreak: { mode: ["css", "legacy"], avoid: [".store-title", ".sec-title", ".sub-title"] },
           })
           .from(summaryDoc);
         await run(worker, filename);
