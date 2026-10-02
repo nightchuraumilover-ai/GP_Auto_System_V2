@@ -963,8 +963,12 @@
       });
     }
 
-    function keepLinesOffPageEdges(root, topMm, bottomMm) {
-      const pageInnerPx = ((297 - topMm - bottomMm) * 96) / 25.4;
+    function keepLinesOffPageEdges(root, topMm, leftMm, bottomMm, rightMm) {
+      const pageWmm = 210 - leftMm - rightMm;
+      const pageHmm = 297 - topMm - bottomMm;
+      const elWidth = root.getBoundingClientRect().width || 1;
+      const pageInnerPx = elWidth * (pageHmm / pageWmm);
+      const safety = 14;
       const sel = ".raw-line, .store-title, .sec-title, .sub-title";
       for (let n = 0; n < 160; n++) {
         const rootTop = root.getBoundingClientRect().top;
@@ -974,7 +978,7 @@
           const top = box.top - rootTop;
           const bottom = box.bottom - rootTop;
           const pageEnd = (Math.floor(top / pageInnerPx) + 1) * pageInnerPx;
-          if (top < pageEnd && bottom > pageEnd + 0.5) {
+          if (top < pageEnd && bottom > pageEnd - safety) {
             const spacer = document.createElement("div");
             spacer.style.height = `${Math.ceil(pageEnd - top)}px`;
             el.parentNode.insertBefore(spacer, el);
@@ -1007,7 +1011,7 @@
       }
       setPdfBusy(true);
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      keepLinesOffPageEdges(summaryDoc, 10, 10);
+      keepLinesOffPageEdges(summaryDoc, 10, 12, 10, 12);
       try {
         if (typeof html2pdf === "undefined") throw new Error("pdf-lib");
         const worker = html2pdf()
