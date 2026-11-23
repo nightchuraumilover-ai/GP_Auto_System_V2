@@ -301,6 +301,12 @@
     }
     .item { margin: 0 0 16px; padding-left: 8px; }
     .item h3 { margin: 0 0 8px; font-size: 14px; letter-spacing: 0.08em; }
+    .item-note {
+      margin: -2px 0 8px;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--muted);
+    }
 
     .actions {
       display: flex;
@@ -628,8 +634,9 @@
           <textarea name="salesNewRepeat" placeholder="何をするかまで具体的に"></textarea>
         </div>
         <div class="item">
-          <h3>③ 現在、他店に負けている・改善が必要だと思うこと</h3>
-          <textarea name="salesImprove" placeholder="負けている点・改善が必要な点"></textarea>
+          <h3>③ 同エリアの繁盛していると思われる店舗と比較して、自店が劣っている点・改善が必要だと思うこと</h3>
+          <p class="item-note">※可能な限り、比較した店名・比較内容・改善案を挙げてください。</p>
+          <textarea name="salesImprove" placeholder="比較した店名・比較内容・改善案"></textarea>
         </div>
         <div class="item">
           <h3>④ 売上アップのために、新しく取り組めそうなこと</h3>
@@ -1174,7 +1181,7 @@
           html += storeHeading(name)
             + block("他店には負けない「自店の強み」", rec.salesStrength)
             + block("新規・リピーターを増やすためにできること", rec.salesNewRepeat)
-            + block("現在、他店に負けている・改善が必要だと思うこと", rec.salesImprove)
+            + block("同エリアの繁盛していると思われる店舗と比較して、自店が劣っている点・改善が必要だと思うこと", rec.salesImprove)
             + block("売上アップのために、新しく取り組めそうなこと", rec.salesNewAction);
         });
       }
