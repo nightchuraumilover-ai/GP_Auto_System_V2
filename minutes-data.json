@@ -5,8 +5,8 @@
       "place": "和歌山",
       "attendees": "田崎、砥堀、網中",
       "newCast": "11/5　れいかさん（バニラ）",
-      "leaveCast": "退店0",
-      "castCount": "",
+      "leaveCast": "退店者0",
+      "castCount": "在籍39名（+1）　固定25名　未固定14名",
       "fixedShift": "",
       "managerReport": "",
       "upcoming": "",
@@ -17,7 +17,7 @@
       "salesNewAction": "",
       "other": "",
       "store": "和歌山",
-      "savedAt": "2026-11-23T01:56:25.320Z"
+      "savedAt": "2026-11-23T02:20:06.897Z"
     }
   },
   "month": 11
